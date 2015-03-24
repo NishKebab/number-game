@@ -1,4 +1,5 @@
-#require 'pry'
+gem 'pry'
+require 'pry'
 
 class Meastero
 	attr_accessor :history, :num, :guesses
@@ -35,7 +36,7 @@ class Meastero
 		history << {guess => output}
 		#p history
 		if output.count("-") == 4 
-			puts "You've won in %s  guesses" % @guesses
+			puts "You've won in %s  guesses and the number was: %s" % [@guesses, @num]
 			@guesses = 10000
 			return "Winner"
 		elsif @guesses > 99
@@ -54,38 +55,77 @@ end
 class Guess
 	attr_accessor :guess
 	def initialize
-		@guess = {1 => [1,2,3,4,5,6,7,8,9],
-		 2 => [0,1,2,3,4,5,6,7,8,9],
-		 3 => [0,1,2,3,4,5,6,7,8,9],
-		 4 => [0,1,2,3,4,5,6,7,8,9]}
+		@guess = {0 => [1,2,3,4,5,6,7,8,9],
+		 		  1 => [0,1,2,3,4,5,6,7,8,9],
+		 		  2 => [0,1,2,3,4,5,6,7,8,9],
+		 		  3 => [0,1,2,3,4,5,6,7,8,9]}
+		@guess_prob = {}
+
 		 @turn = 1
 		 @guesses = []
 		 @outputs = []
+		 @all_values = []
 	end
 	def remove_numbers(numbers)
-		 numbers = numbers.split('')
- 		 numbers.map!{|n| n.to_i} 		 
+		numbers = transform_guess numbers	 
 		 @guess.each do |k,v|
  			@guess[k] = @guess[k] - numbers
  		end
 	end
 	def remove_digit(numbers)
-		 numbers = numbers.split('')
- 		 numbers.map!{|n| n.to_i} 	
+		numbers = transform_guess numbers
+			
 		 numbers.each_with_index do |o,i|
-			@guess[i+1].delete o
+			@guess[i].delete o
 		end
 	end
 	def add_digit(numbers)
-		numbers = numbers.split('')
- 		numbers.map!{|n| n.to_i} 
+		numbers = transform_guess numbers
  		numbers.each_with_index do |n,i|
- 			if @guess[i+1].include? n && @guess[i+1].count(n) < 5
- 				@guess[i+1] << n 
+ 			if @guess[i].include? n && @guess[i].count(n) < 5
+ 				@guess[i] << n 
  			end
  		end
 	end
+	def transform_guess(guess)
+		guess = guess.split('')
+ 		guess.map!{|n| n.to_i} 
+ 		guess
+	end
 
+	def enumrate_possible_values
+		values = []
+		num = []
+		out_temp = @outputs.last
+		out_temp = Array.new(4){|i| out_temp[i] || ""}
+		out_perm = out_temp.permutation.to_a.uniq
+		out_perm.each do |out|
+			@guess[0].each do |g0|
+				@guess[1].each do |g1|
+					@guess[2].each do |g2|                
+						@guess[3].each do |g3|
+							num = [] 
+							(0..3).each do |i|
+								if out[i] == "-"
+									num << @guesses.last[i].to_i
+								elsif out[i] == "o"
+									num << eval("g%s" % i) if !@guess[i].include? @guesses.last[i].to_i
+								elsif out[i] == "" || out[i] == nil
+									num << eval("g%s" % i) if !@guess[i].include? @guesses.last[i].to_i
+								end
+							end
+							values << num.join.to_i if num.size > 3
+						end
+					end
+				end
+			end
+		end
+		if @all_values.size > 0
+			@all_values << (@all_values.last & values.flatten.uniq)
+		else
+			@all_values << values.flatten.uniq
+		end
+	end
 
 
 	def process_history
@@ -97,7 +137,12 @@ class Guess
 			remove_digit @guesses[i]
 		elsif !output.include? "o" && output.count("-") > 2
 			add_digit @guesses[i]
+		elsif output == ["o","o","o","o"]
+			@guess.each do [k,v]
+				@guess[k] = (v & @guesses[i])
+			end
 		end
+		enumrate_possible_values
 	end
 
 	def guess(output)
@@ -106,7 +151,7 @@ class Guess
 		@guesses << select_num
 		@turn = @turn + 1
 
-		return @guesses[@guesses.size-1]
+		return @guesses.last
 
 	end
 	
@@ -117,8 +162,13 @@ class Guess
 			return "4433"
 		#elsif @turn == 3
 			#return "9999"
+		elsif @turn > 2
+			t_g = @guesses.map{|g| g.to_i}
+			num = (@all_values.last - t_g).sample
+			return num.to_s
+				
 
-		else
+		elsif (1==2)
 		 	begin 
 				num = ""
 				@guess.each do |k,v|
