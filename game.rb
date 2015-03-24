@@ -96,24 +96,30 @@ class Guess
 	def enumrate_possible_values
 		values = []
 		num = []
+		last_guess = @guesses.last
 		out_temp = @outputs.last
 		out_temp = Array.new(4){|i| out_temp[i] || ""}
 		out_perm = out_temp.permutation.to_a.uniq
 		out_perm.each do |out|
-			@guess[0].each do |g0|
-				@guess[1].each do |g1|
-					@guess[2].each do |g2|                
-						@guess[3].each do |g3|
+			temp_guess = @guess.clone
+			out.each_with_index do |o,i|
+				if o == "o"					
+					temp = last_guess.split("")
+					temp.delete_at(i)
+					temp_guess[i] = temp 
+					temp_guess[i] = temp_guess[i].map{|a| a.to_i}
+				elsif o == "-"
+					temp_guess[i] = Array.new(1){last_guess.split("")[i].to_i}
+				elsif o == ""
+					temp_guess[i] = temp_guess[i] - Array.new(1){last_guess.split("")[i].to_i}
+				end	
+			end
+			temp_guess[0].each do |g0|
+				temp_guess[1].each do |g1|
+					temp_guess[2].each do |g2|                
+						temp_guess[3].each do |g3|
 							num = [] 
-							(0..3).each do |i|
-								if out[i] == "-"
-									num << @guesses.last[i].to_i
-								elsif out[i] == "o"
-									num << eval("g%s" % i) if !@guess[i].include? @guesses.last[i].to_i
-								elsif out[i] == "" || out[i] == nil
-									num << eval("g%s" % i) if !@guess[i].include? @guesses.last[i].to_i
-								end
-							end
+							num << g0<<g1<<g2<<g3
 							values << num.join.to_i if num.size > 3
 						end
 					end
@@ -142,7 +148,7 @@ class Guess
 				@guess[k] = (v & @guesses[i])
 			end
 		end
-		enumrate_possible_values
+		enumrate_possible_values if @turn > 1
 	end
 
 	def guess(output)
@@ -164,7 +170,11 @@ class Guess
 			#return "9999"
 		elsif @turn > 2
 			t_g = @guesses.map{|g| g.to_i}
-			num = (@all_values.last - t_g).sample
+			if @turn%2==0
+			num = (@all_values.last - t_g).last
+			else
+			num = (@all_values.last - t_g).first
+		end
 			return num.to_s
 				
 
